@@ -53,7 +53,7 @@ class WeightReader:
                 conv_layer = model.get_layer('conv_' + str(i))
                 print("loading weights of convolution #" + str(i))
 
-                if i not in [81, 93, 105]:
+                if i not in [81, 93, 105]:  # No bnorm for the three layers
                     norm_layer = model.get_layer('bnorm_' + str(i))
 
                     size = np.prod(norm_layer.get_weights()[0].shape)
@@ -113,10 +113,12 @@ def _conv_block(inp, convs, skip=True):
     count = 0
     
     for conv in convs:
+        # Make residual blocks for the last two layers
         if count == (len(convs) - 2) and skip:
             skip_connection = x
         count += 1
         
+        # Yolo v3 has only stride 1 or 2
         if conv['stride'] > 1: x = ZeroPadding2D(((1,0),(1,0)))(x) # peculiar padding as darknet prefer left and top
         x = Conv2D(conv['filter'], 
                    conv['kernel'], 
@@ -211,7 +213,8 @@ def make_yolov3_model():
     for i in range(3):
         x = _conv_block(x, [{'filter':  512, 'kernel': 1, 'stride': 1, 'bnorm': True, 'leaky': True, 'layer_idx': 66+i*3},
                             {'filter': 1024, 'kernel': 3, 'stride': 1, 'bnorm': True, 'leaky': True, 'layer_idx': 67+i*3}])
-        
+    
+    # From now on it differs from the DarkNet53
     # Layer 75 => 79
     x = _conv_block(x, [{'filter':  512, 'kernel': 1, 'stride': 1, 'bnorm': True, 'leaky': True, 'layer_idx': 75},
                         {'filter': 1024, 'kernel': 3, 'stride': 1, 'bnorm': True, 'leaky': True, 'layer_idx': 76},
